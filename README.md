@@ -33,8 +33,8 @@ fabric-loader and Mixin, and everything it loads it loads by reflection.
 
 ## Licence
 
-GPL-3, copyright (c) 2026 Lodestone Services LLC. See `LICENSE`.
+GPL-3, copyright © 2026 Lodestone Services LLC. See `LICENSE`.
 
 This is a derivative of [Essential Loader](https://github.com/EssentialGG/EssentialLoader),
-copyright ModCore Inc. d/b/a Essential, used under GPL-3. See `NOTICE`. Not affiliated with,
+copyright © ModCore Inc. d/b/a Essential, used under GPL-3. See `NOTICE`. Not affiliated with,
 endorsed by, or sponsored by Essential.
