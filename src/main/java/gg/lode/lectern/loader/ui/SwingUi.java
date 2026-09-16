@@ -47,9 +47,11 @@ public final class SwingUi implements LoaderUi {
     private static final String PRIVACY_POLICY = "https://lode.gg/legal/lectern-privacy";
     private static final int[] ICON_SIZES = {16, 20, 24, 32, 48, 64, 128};
 
+    private static final String LODESTONE_MARK = "/lodestone.png";
+    private static final String LECTERN_MARK = "/lectern.png";
+
+    private static final Map<String, BufferedImage> SOURCES = new HashMap<>();
     private static List<Image> icons;
-    private static BufferedImage source;
-    private static boolean sourceLoaded;
 
     private JFrame progress;
     private JProgressBar bar;
@@ -300,7 +302,7 @@ public final class SwingUi implements LoaderUi {
         row.setBorder(BorderFactory.createEmptyBorder(0, 0, 4, 0));
 
         JLabel mark = new JLabel();
-        Image logo = logo(22);
+        Image logo = scaled(LODESTONE_MARK, 22);
         if (logo != null) mark.setIcon(new ImageIcon(logo));
         row.add(mark);
 
@@ -315,23 +317,24 @@ public final class SwingUi implements LoaderUi {
         if (icons != null) return icons;
         List<Image> sizes = new ArrayList<>();
         for (int size : ICON_SIZES) {
-            Image scaled = logo(size);
-            if (scaled != null) sizes.add(scaled);
+            Image mark = scaled(LECTERN_MARK, size);
+            if (mark != null) sizes.add(mark);
         }
         icons = sizes;
         return icons;
     }
 
-    private static synchronized Image logo(int size) {
-        if (!sourceLoaded) {
-            sourceLoaded = true;
-            try (InputStream in = SwingUi.class.getResourceAsStream("/lodestone.png")) {
-                if (in != null) source = ImageIO.read(in);
-            } catch (Exception noLogo) {
-                source = null;
+    private static synchronized Image scaled(String resource, int size) {
+        BufferedImage mark = SOURCES.get(resource);
+        if (mark == null && !SOURCES.containsKey(resource)) {
+            try (InputStream in = SwingUi.class.getResourceAsStream(resource)) {
+                mark = in == null ? null : ImageIO.read(in);
+            } catch (Exception noMark) {
+                mark = null;
             }
+            SOURCES.put(resource, mark);
         }
-        return source == null ? null : source.getScaledInstance(size, size, Image.SCALE_SMOOTH);
+        return mark == null ? null : mark.getScaledInstance(size, size, Image.SCALE_SMOOTH);
     }
 
     private JPanel column(java.awt.Component... parts) {
