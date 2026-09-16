@@ -27,6 +27,7 @@ import java.awt.event.MouseEvent;
 import java.awt.font.TextAttribute;
 import java.io.InputStream;
 import java.net.URI;
+import java.time.Year;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
@@ -172,8 +173,13 @@ public final class SwingUi implements LoaderUi {
         row.setOpaque(false);
         for (JButton button : buttons) row.add(button);
 
+        JPanel footer = new JPanel(new BorderLayout());
+        footer.setOpaque(false);
+        footer.add(copyright(), BorderLayout.WEST);
+        footer.add(row, BorderLayout.EAST);
+
         JPanel panel = frame(content);
-        panel.add(row, BorderLayout.SOUTH);
+        panel.add(footer, BorderLayout.SOUTH);
         dialog.setContentPane(panel);
         dialog.pack();
         dialog.setLocationRelativeTo(null);
@@ -186,7 +192,16 @@ public final class SwingUi implements LoaderUi {
         panel.setBorder(BorderFactory.createEmptyBorder(18, 22, 18, 22));
         panel.add(header(), BorderLayout.NORTH);
         panel.add(content, BorderLayout.CENTER);
+        panel.add(copyright(), BorderLayout.SOUTH);
         return panel;
+    }
+
+    private JLabel copyright() {
+        int year = Year.now().getValue();
+        String span = year > 2026 ? "2026-" + year : "2026";
+        JLabel label = small("© Lodestone Services LLC " + span);
+        label.setBorder(BorderFactory.createEmptyBorder(6, 0, 0, 0));
+        return label;
     }
 
     private JPanel row(java.awt.Component... parts) {
