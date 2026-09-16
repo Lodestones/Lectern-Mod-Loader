@@ -4,10 +4,10 @@
   "version": "${version}",
   "name": "Lectern Loader",
   "description": "Loads Lectern, and keeps it up to date. Ships the mod it loads inside itself, so it works with no network at all.",
-  "authors": ["Lodestone"],
+  "authors": ["Lodestone Services LLC"],
   "contact": {
     "homepage": "https://lode.gg/mod/lectern",
-    "sources": "https://github.com/Lodestones/Lectern-Loader"
+    "sources": "https://github.com/Lodestones/Lectern-Mod-Loader"
   },
   "license": "GPL-3.0-only",
   "environment": "client",
