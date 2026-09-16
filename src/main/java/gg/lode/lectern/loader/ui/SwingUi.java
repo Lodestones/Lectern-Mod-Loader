@@ -6,7 +6,6 @@ import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
-import javax.swing.JDialog;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
@@ -24,12 +23,18 @@ import java.awt.FlowLayout;
 import java.awt.Image;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 import java.awt.font.TextAttribute;
+import java.awt.image.BufferedImage;
 import java.io.InputStream;
 import java.net.URI;
 import java.time.Year;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicReference;
 
 public final class SwingUi implements LoaderUi {
@@ -40,6 +45,11 @@ public final class SwingUi implements LoaderUi {
     private static final Color ACCENT = new Color(0xB4, 0x8C, 0xFF);
     private static final String LECTERN_PAGE = "https://lode.gg/mod/lectern";
     private static final String PRIVACY_POLICY = "https://lode.gg/legal/lectern-privacy";
+    private static final int[] ICON_SIZES = {16, 20, 24, 32, 48, 64, 128};
+
+    private static List<Image> icons;
+    private static BufferedImage source;
+    private static boolean sourceLoaded;
 
     private JFrame progress;
     private JProgressBar bar;
@@ -57,64 +67,58 @@ public final class SwingUi implements LoaderUi {
     @Override
     public boolean askFirstRun(String displayName) {
         AtomicReference<Boolean> answer = new AtomicReference<>(Boolean.TRUE);
-        onSwingThread(() -> {
-            JCheckBox opted = checkBox("Keep " + displayName + " up to date automatically", true);
+        JCheckBox opted = checkBox("Keep " + displayName + " up to date automatically", true);
 
-            JPanel content = column(
-                    title("Welcome to " + displayName + "!"),
-                    row(text(displayName + " checks "), link("lode.gg", LECTERN_PAGE),
-                            text(" for a newer version each time the game")),
-                    text("starts, and installs it before you reach the title screen."),
-                    Box.createVerticalStrut(10),
-                    text("Nothing about you is sent. The check asks our server which version is"),
-                    text("newest and downloads the file if yours is older."),
-                    Box.createVerticalStrut(12),
-                    opted,
-                    Box.createVerticalStrut(4),
-                    small("If unchecked, you will be asked to update each time instead. You can change"),
-                    small("this in .minecraft/lectern/loader.properties at any time if you want to opt"),
-                    small("back in."),
-                    Box.createVerticalStrut(10),
-                    row(small("By installing " + displayName + " for the first time, you agree to our "),
-                            smallLink("Privacy Policy", PRIVACY_POLICY),
-                            small(".")));
+        JPanel content = column(
+                title("Welcome to " + displayName + "!"),
+                row(text(displayName + " checks "), link("lode.gg", LECTERN_PAGE),
+                        text(" for a newer version each time the game")),
+                text("starts, and installs it before you reach the title screen."),
+                Box.createVerticalStrut(10),
+                text("Nothing about you is sent. The check asks our server which version is"),
+                text("newest and downloads the file if yours is older."),
+                Box.createVerticalStrut(12),
+                opted,
+                Box.createVerticalStrut(4),
+                small("If unchecked, you will be asked to update each time instead. You can change"),
+                small("this in .minecraft/lectern/loader.properties at any time if you want to opt"),
+                small("back in."),
+                Box.createVerticalStrut(10),
+                row(small("By installing " + displayName + " for the first time, you agree to our "),
+                        smallLink("Privacy Policy", PRIVACY_POLICY),
+                        small(".")));
 
-            JButton ok = button("Continue");
-            JDialog dialog = dialog(displayName, content, ok);
-            ok.addActionListener(event -> {
-                answer.set(opted.isSelected());
-                dialog.dispose();
-            });
-            dialog.setVisible(true);
-        });
+        JButton ok = button("Continue");
+        prompt(displayName, content, frame -> ok.addActionListener(event -> {
+            answer.set(opted.isSelected());
+            frame.dispose();
+        }), ok);
         return answer.get();
     }
 
     @Override
     public Answer askUpdate(String displayName, String version) {
         AtomicReference<Answer> answer = new AtomicReference<>(Answer.SKIP);
-        onSwingThread(() -> {
-            JCheckBox always = checkBox("Install updates automatically from now on", false);
+        JCheckBox always = checkBox("Install updates automatically from now on", false);
 
-            JPanel content = column(
-                    title(displayName + " " + version + " is available"),
-                    text("You are set to be asked before updating."),
-                    Box.createVerticalStrut(12),
-                    always);
+        JPanel content = column(
+                title(displayName + " " + version + " is available"),
+                text("You are set to be asked before updating."),
+                Box.createVerticalStrut(12),
+                always);
 
-            JButton skip = button("Skip");
-            JButton download = button("Download");
-            JDialog dialog = dialog(displayName, content, skip, download);
+        JButton skip = button("Skip");
+        JButton download = button("Download");
+        prompt(displayName, content, frame -> {
             skip.addActionListener(event -> {
                 answer.set(Answer.SKIP);
-                dialog.dispose();
+                frame.dispose();
             });
             download.addActionListener(event -> {
                 answer.set(always.isSelected() ? Answer.DOWNLOAD_AND_ALWAYS : Answer.DOWNLOAD);
-                dialog.dispose();
+                frame.dispose();
             });
-            dialog.setVisible(true);
-        });
+        }, skip, download);
         return answer.get();
     }
 
@@ -124,8 +128,8 @@ public final class SwingUi implements LoaderUi {
         onSwingThread(() -> {
             progress = new JFrame(displayName);
             progress.setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
-            progress.setUndecorated(false);
             progress.setResizable(false);
+            progress.setIconImages(icons());
 
             status = text("Downloading " + displayName + " " + version);
             bar = new JProgressBar(0, 1000);
@@ -140,6 +144,7 @@ public final class SwingUi implements LoaderUi {
             progress.pack();
             progress.setLocationRelativeTo(null);
             progress.setVisible(true);
+            progress.toFront();
         });
     }
 
@@ -166,13 +171,9 @@ public final class SwingUi implements LoaderUi {
 
     @Override
     public void problem(String displayName, String message) {
-        onSwingThread(() -> {
-            JPanel content = column(title(displayName + " could not start"), text(message));
-            JButton ok = button("Continue without " + displayName);
-            JDialog dialog = dialog(displayName, content, ok);
-            ok.addActionListener(event -> dialog.dispose());
-            dialog.setVisible(true);
-        });
+        JPanel content = column(title(displayName + " could not start"), text(message));
+        JButton ok = button("Continue without " + displayName);
+        prompt(displayName, content, frame -> ok.addActionListener(event -> frame.dispose()), ok);
     }
 
     @Override
@@ -180,26 +181,57 @@ public final class SwingUi implements LoaderUi {
         downloadFinished();
     }
 
-    private JDialog dialog(String heading, JPanel content, JButton... buttons) {
-        JDialog dialog = new JDialog((JFrame) null, heading, true);
-        dialog.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
-        dialog.setResizable(false);
+    private interface Wiring {
+        void accept(JFrame frame);
+    }
 
-        JPanel row = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
-        row.setOpaque(false);
-        for (JButton button : buttons) row.add(button);
+    private void prompt(String heading, JPanel content, Wiring wiring, JButton... buttons) {
+        CountDownLatch answered = new CountDownLatch(1);
+        AtomicReference<JFrame> shown = new AtomicReference<>();
+        onSwingThread(() -> {
+            JFrame frame = new JFrame(heading);
+            frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+            frame.setResizable(false);
+            frame.setIconImages(icons());
+            frame.addWindowListener(new WindowAdapter() {
+                @Override
+                public void windowClosed(WindowEvent event) {
+                    answered.countDown();
+                }
+            });
 
-        JPanel footer = new JPanel(new BorderLayout());
-        footer.setOpaque(false);
-        footer.add(copyright(), BorderLayout.WEST);
-        footer.add(row, BorderLayout.EAST);
+            JPanel row = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
+            row.setOpaque(false);
+            for (JButton button : buttons) row.add(button);
 
-        JPanel panel = frame(content);
-        panel.add(footer, BorderLayout.SOUTH);
-        dialog.setContentPane(panel);
-        dialog.pack();
-        dialog.setLocationRelativeTo(null);
-        return dialog;
+            JPanel footer = new JPanel(new BorderLayout());
+            footer.setOpaque(false);
+            footer.add(copyright(), BorderLayout.WEST);
+            footer.add(row, BorderLayout.EAST);
+
+            JPanel panel = frame(content);
+            panel.add(footer, BorderLayout.SOUTH);
+            frame.setContentPane(panel);
+
+            wiring.accept(frame);
+            frame.pack();
+            frame.setLocationRelativeTo(null);
+            frame.setAlwaysOnTop(true);
+            frame.setVisible(true);
+            frame.toFront();
+            frame.requestFocus();
+            if (buttons.length > 0) buttons[buttons.length - 1].requestFocusInWindow();
+            shown.set(frame);
+        });
+
+        JFrame opened = shown.get();
+        if (opened == null || !opened.isDisplayable()) return;
+        if (SwingUtilities.isEventDispatchThread()) return;
+        try {
+            answered.await();
+        } catch (InterruptedException interrupted) {
+            Thread.currentThread().interrupt();
+        }
     }
 
     private JPanel frame(JPanel content) {
@@ -268,7 +300,7 @@ public final class SwingUi implements LoaderUi {
         row.setBorder(BorderFactory.createEmptyBorder(0, 0, 4, 0));
 
         JLabel mark = new JLabel();
-        Image logo = logo();
+        Image logo = logo(22);
         if (logo != null) mark.setIcon(new ImageIcon(logo));
         row.add(mark);
 
@@ -279,13 +311,27 @@ public final class SwingUi implements LoaderUi {
         return row;
     }
 
-    private Image logo() {
-        try (InputStream in = SwingUi.class.getResourceAsStream("/lodestone.png")) {
-            if (in == null) return null;
-            return ImageIO.read(in).getScaledInstance(22, 22, Image.SCALE_SMOOTH);
-        } catch (Exception noLogo) {
-            return null;
+    private static synchronized List<Image> icons() {
+        if (icons != null) return icons;
+        List<Image> sizes = new ArrayList<>();
+        for (int size : ICON_SIZES) {
+            Image scaled = logo(size);
+            if (scaled != null) sizes.add(scaled);
         }
+        icons = sizes;
+        return icons;
+    }
+
+    private static synchronized Image logo(int size) {
+        if (!sourceLoaded) {
+            sourceLoaded = true;
+            try (InputStream in = SwingUi.class.getResourceAsStream("/lodestone.png")) {
+                if (in != null) source = ImageIO.read(in);
+            } catch (Exception noLogo) {
+                source = null;
+            }
+        }
+        return source == null ? null : source.getScaledInstance(size, size, Image.SCALE_SMOOTH);
     }
 
     private JPanel column(java.awt.Component... parts) {
