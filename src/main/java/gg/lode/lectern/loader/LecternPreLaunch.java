@@ -57,10 +57,17 @@ public final class LecternPreLaunch implements PreLaunchEntrypoint {
         boolean automatic = user.autoUpdate();
 
         try (LoaderUi ui = Ui.open(container.showUi() && user.showUi())) {
+            boolean answered = true;
             if (firstRun) {
-                automatic = ui.askFirstRun(container.displayName());
-                LoaderConfig.save(settings, automatic);
-                LOG.info("First run: automatic updates " + (automatic ? "on" : "off"));
+                LoaderUi.Consent consent = ui.askFirstRun(container.displayName());
+                answered = consent != LoaderUi.Consent.DISMISSED;
+                if (answered) {
+                    automatic = consent == LoaderUi.Consent.AUTOMATIC;
+                    LoaderConfig.save(settings, automatic);
+                    LOG.info("First run: automatic updates " + (automatic ? "on" : "off"));
+                } else {
+                    LOG.info("First run window closed without an answer; nothing saved");
+                }
             }
 
             boolean required = chosen == null;
@@ -68,7 +75,9 @@ public final class LecternPreLaunch implements PreLaunchEntrypoint {
                 LOG.info("Nothing on disk yet; this copy has to be downloaded");
             }
 
-            if (container.autoUpdate()) {
+            if (!answered) {
+                LOG.info("No answer yet, so nothing is downloaded this launch");
+            } else if (container.autoUpdate()) {
                 UpdateFetcher fetcher = new UpdateFetcher(LOG);
                 UpdateFetcher.Available update = fetcher.check(container.manifestUrl(), version);
                 if (update != null) {

@@ -2,7 +2,7 @@ package gg.lode.lectern.loader.ui;
 
 public interface LoaderUi extends AutoCloseable {
 
-    boolean askFirstRun(String displayName);
+    Consent askFirstRun(String displayName);
 
     Answer askUpdate(String displayName, String version);
 
@@ -17,6 +17,12 @@ public interface LoaderUi extends AutoCloseable {
     @Override
     void close();
 
+    enum Consent {
+        AUTOMATIC,
+        MANUAL,
+        DISMISSED
+    }
+
     enum Answer {
         DOWNLOAD,
         DOWNLOAD_AND_ALWAYS,
@@ -25,8 +31,8 @@ public interface LoaderUi extends AutoCloseable {
 
     LoaderUi SILENT = new LoaderUi() {
         @Override
-        public boolean askFirstRun(String displayName) {
-            return true;
+        public Consent askFirstRun(String displayName) {
+            return Consent.AUTOMATIC;
         }
 
         @Override

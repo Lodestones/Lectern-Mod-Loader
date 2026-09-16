@@ -40,9 +40,14 @@ public final class ForkedUi implements LoaderUi {
     }
 
     @Override
-    public boolean askFirstRun(String displayName) {
+    public Consent askFirstRun(String displayName) {
         String answer = ask("first-run\t" + displayName);
-        return !"false".equals(answer);
+        if (answer == null) return Consent.AUTOMATIC;
+        try {
+            return Consent.valueOf(answer);
+        } catch (IllegalArgumentException unknown) {
+            return Consent.DISMISSED;
+        }
     }
 
     @Override

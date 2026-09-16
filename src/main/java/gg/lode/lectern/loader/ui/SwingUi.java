@@ -80,8 +80,8 @@ public final class SwingUi implements LoaderUi {
     }
 
     @Override
-    public boolean askFirstRun(String displayName) {
-        AtomicReference<Boolean> answer = new AtomicReference<>(Boolean.TRUE);
+    public Consent askFirstRun(String displayName) {
+        AtomicReference<Consent> answer = new AtomicReference<>(Consent.DISMISSED);
         JCheckBox opted = checkBox("Keep " + displayName + " up to date automatically", true);
 
         JPanel content = column(
@@ -105,7 +105,7 @@ public final class SwingUi implements LoaderUi {
 
         JButton ok = button("Continue");
         prompt(displayName, content, frame -> ok.addActionListener(event -> {
-            answer.set(opted.isSelected());
+            answer.set(opted.isSelected() ? Consent.AUTOMATIC : Consent.MANUAL);
             frame.dispose();
         }), ok);
         return answer.get();

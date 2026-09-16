@@ -17,7 +17,7 @@ public final class UiMain {
         while ((line = in.readLine()) != null) {
             String[] parts = line.split("\t", -1);
             switch (parts[0]) {
-                case "first-run" -> out.println(ui.askFirstRun(parts[1]));
+                case "first-run" -> out.println(ui.askFirstRun(parts[1]).name());
                 case "update" -> out.println(ui.askUpdate(parts[1], parts[2]).name());
                 case "start" -> ui.downloadStarted(parts[1], parts[2], Long.parseLong(parts[3]));
                 case "progress" -> ui.downloadProgress(Long.parseLong(parts[1]));
