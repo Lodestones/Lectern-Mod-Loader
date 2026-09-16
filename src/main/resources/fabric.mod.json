@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "id": "lectern-loader",
+  "version": "${version}",
+  "name": "Lectern Loader",
+  "description": "Loads Lectern, and keeps it up to date. Ships the mod it loads inside itself, so it works with no network at all.",
+  "authors": ["Lodestone"],
+  "contact": {
+    "homepage": "https://lode.gg/mod/lectern",
+    "sources": "https://github.com/Lodestones/Lectern-Loader"
+  },
+  "license": "GPL-3.0-only",
+  "environment": "client",
+  "entrypoints": {
+    "preLaunch": [
+      "gg.lode.lectern.loader.LecternPreLaunch"
+    ]
+  },
+  "depends": {
+    "fabricloader": ">=0.15.0",
+    "minecraft": "*"
+  }
+}

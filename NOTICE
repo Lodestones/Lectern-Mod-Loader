@@ -1,0 +1,23 @@
+Lectern Loader
+Copyright (c) 2026 Lodestone
+
+This program is free software: you can redistribute it and/or modify it under
+the terms of the GNU General Public License version 3, as published by the Free
+Software Foundation. See LICENSE.
+
+------------------------------------------------------------------------------
+
+This is a derivative work of Essential Loader:
+
+    https://github.com/EssentialGG/EssentialLoader
+    Copyright (c) ModCore Inc. d/b/a Essential
+
+Essential Loader is made available under GPL-3 (by way of the Use and
+Contribution License Agreement in that repository). The parts derived from it
+here are the Fabric mod injection: adding a jar to Knot's class loader,
+parsing its metadata, registering its mixin configs, and pushing a mod
+container into fabric-loader's private state.
+
+Lectern Loader is not affiliated with, endorsed by, or sponsored by Essential.
+The names "Essential", "Essential Mod" and "Essential Loader" are trademarks of
+ModCore Inc. and are not used to identify this software.
