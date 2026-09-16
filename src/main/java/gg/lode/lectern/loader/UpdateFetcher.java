@@ -1,5 +1,9 @@
 package gg.lode.lectern.loader;
 
+import gg.lode.lectern.loader.ui.LoaderUi;
+
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.math.BigInteger;
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -22,7 +26,10 @@ final class UpdateFetcher {
         this.log = log;
     }
 
-    Path fetchNewer(String manifestUrl, String current, Path mods) {
+    record Available(String version, String url, String sha256) {
+    }
+
+    Available check(String manifestUrl, String current) {
         try {
             HttpClient http = HttpClient.newBuilder().connectTimeout(MANIFEST_TIMEOUT).build();
             HttpResponse<String> response = http.send(
@@ -36,7 +43,6 @@ final class UpdateFetcher {
             String body = response.body();
             String latest = jsonString(body, "version");
             String url = jsonString(body, "url");
-            String sha256 = jsonString(body, "sha256");
             if (latest == null || url == null) {
                 log.warn("Update check skipped: manifest is missing version or url");
                 return null;
@@ -45,31 +51,74 @@ final class UpdateFetcher {
                 log.info("Already on the newest version (" + current + ")");
                 return null;
             }
+            return new Available(latest, url, jsonString(body, "sha256"));
+        } catch (Throwable anything) {
+            log.warn("Update check skipped: " + anything);
+            return null;
+        }
+    }
 
-            Path target = mods.resolve("lectern-" + latest + ".jar");
-            if (Files.isRegularFile(target)) {
-                log.info("Version " + latest + " is already downloaded");
-                return target;
+    Path download(Available update, Path mods, LoaderUi ui, String displayName) {
+        Path target = mods.resolve("lectern-" + update.version() + ".jar");
+        if (Files.isRegularFile(target)) {
+            log.info("Version " + update.version() + " is already downloaded");
+            return target;
+        }
+
+        Path part = mods.resolve("lectern-" + update.version() + ".jar.part");
+        try {
+            HttpClient http = HttpClient.newBuilder().connectTimeout(MANIFEST_TIMEOUT).build();
+            HttpResponse<InputStream> response = http.send(
+                    HttpRequest.newBuilder(URI.create(update.url())).timeout(DOWNLOAD_TIMEOUT).GET().build(),
+                    HttpResponse.BodyHandlers.ofInputStream());
+            if (response.statusCode() != 200) {
+                log.warn("Download skipped: server returned " + response.statusCode());
+                return null;
             }
 
-            log.info("Downloading Lectern " + latest);
-            byte[] jar = http.send(
-                    HttpRequest.newBuilder(URI.create(url)).timeout(DOWNLOAD_TIMEOUT).GET().build(),
-                    HttpResponse.BodyHandlers.ofByteArray()).body();
+            long size = response.headers().firstValueAsLong("content-length").orElse(-1);
+            ui.downloadStarted(displayName, update.version(), size);
+            log.info("Downloading Lectern " + update.version()
+                    + (size > 0 ? " (" + size / 1_048_576 + " MB)" : ""));
 
-            if (sha256 != null && !sha256.equalsIgnoreCase(sha256Of(jar))) {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            long read = 0;
+            try (InputStream in = response.body();
+                 OutputStream out = Files.newOutputStream(part)) {
+                byte[] buffer = new byte[65536];
+                int count;
+                long lastReport = 0;
+                while ((count = in.read(buffer)) > 0) {
+                    out.write(buffer, 0, count);
+                    digest.update(buffer, 0, count);
+                    read += count;
+                    if (read - lastReport > 262144) {
+                        ui.downloadProgress(read);
+                        lastReport = read;
+                    }
+                }
+            }
+            ui.downloadProgress(read);
+
+            String actual = String.format("%064x", new BigInteger(1, digest.digest()));
+            if (update.sha256() != null && !update.sha256().equalsIgnoreCase(actual)) {
+                Files.deleteIfExists(part);
                 log.warn("Update discarded: the download does not match the checksum in the manifest");
                 return null;
             }
 
-            Path part = mods.resolve("lectern-" + latest + ".jar.part");
-            Files.write(part, jar);
             Files.move(part, target, StandardCopyOption.REPLACE_EXISTING);
-            log.info("Downloaded Lectern " + latest);
+            log.info("Downloaded Lectern " + update.version());
             return target;
         } catch (Throwable anything) {
-            log.warn("Update check skipped: " + anything);
+            try {
+                Files.deleteIfExists(part);
+            } catch (Exception ignored) {
+            }
+            log.warn("Download failed: " + anything);
             return null;
+        } finally {
+            ui.downloadFinished();
         }
     }
 
@@ -84,11 +133,6 @@ final class UpdateFetcher {
         int close = json.indexOf('"', open + 1);
         if (close < 0) return null;
         return json.substring(open + 1, close);
-    }
-
-    private static String sha256Of(byte[] bytes) throws Exception {
-        MessageDigest digest = MessageDigest.getInstance("SHA-256");
-        return String.format("%064x", new BigInteger(1, digest.digest(bytes)));
     }
 
     static void prune(Path mods, Path keep, Log log) {

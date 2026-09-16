@@ -70,4 +70,21 @@ public final class LoaderConfig {
     public boolean autoUpdate() {
         return flag("autoUpdate", true);
     }
+
+    public boolean showUi() {
+        return flag("ui", true);
+    }
+
+    public static void save(Path file, boolean autoUpdate) {
+        try {
+            Files.createDirectories(file.getParent());
+            Files.writeString(file, String.join(System.lineSeparator(),
+                    "# Lectern loader settings.",
+                    "# autoUpdate=false asks before installing a newer version.",
+                    "autoUpdate=" + autoUpdate,
+                    ""));
+        } catch (IOException cannotWrite) {
+            // Asked again next launch, which is better than failing the launch.
+        }
+    }
 }

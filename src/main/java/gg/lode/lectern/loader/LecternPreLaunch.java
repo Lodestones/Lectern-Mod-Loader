@@ -1,5 +1,7 @@
 package gg.lode.lectern.loader;
 
+import gg.lode.lectern.loader.ui.LoaderUi;
+import gg.lode.lectern.loader.ui.Ui;
 import net.fabricmc.loader.api.FabricLoader;
 import net.fabricmc.loader.api.entrypoint.PreLaunchEntrypoint;
 
@@ -48,18 +50,55 @@ public final class LecternPreLaunch implements PreLaunchEntrypoint {
                     + container.pinnedFileVersion());
         }
 
-        if (user.autoUpdate() && container.autoUpdate()) {
-            Path fetched = new UpdateFetcher(LOG).fetchNewer(container.manifestUrl(), version, mods);
-            if (fetched != null) {
-                chosen = fetched;
-                version = versionOf(fetched);
+        Path settings = root.resolve("loader.properties");
+        boolean firstRun = !Files.isRegularFile(settings);
+        boolean automatic = user.autoUpdate();
+
+        try (LoaderUi ui = Ui.open(container.showUi() && user.showUi())) {
+            if (firstRun) {
+                automatic = ui.askFirstRun(container.displayName());
+                LoaderConfig.save(settings, automatic);
+                LOG.info("First run: automatic updates " + (automatic ? "on" : "off"));
             }
-        } else {
-            LOG.info("Auto-update is off; running " + version);
+
+            boolean required = chosen == null;
+            if (required) {
+                LOG.info("Nothing on disk yet; this copy has to be downloaded");
+            }
+
+            if (container.autoUpdate()) {
+                UpdateFetcher fetcher = new UpdateFetcher(LOG);
+                UpdateFetcher.Available update = fetcher.check(container.manifestUrl(), version);
+                if (update != null) {
+                    boolean take = automatic || required;
+                    if (!automatic && !required) {
+                        LoaderUi.Answer answer = ui.askUpdate(container.displayName(), update.version());
+                        take = answer != LoaderUi.Answer.SKIP;
+                        if (answer == LoaderUi.Answer.DOWNLOAD_AND_ALWAYS) {
+                            LoaderConfig.save(settings, true);
+                            LOG.info("Automatic updates turned back on");
+                        }
+                    }
+                    if (take) {
+                        Path fetched = fetcher.download(update, mods, ui, container.displayName());
+                        if (fetched != null) {
+                            chosen = fetched;
+                            version = update.version();
+                        }
+                    } else {
+                        LOG.info("Update to " + update.version() + " skipped");
+                    }
+                } else if (required) {
+                    LOG.warn("No copy to load and the manifest offered nothing");
+                }
+            } else {
+                LOG.info("Updates are off in this build; running " + version);
+            }
         }
 
         if (chosen == null) {
-            LOG.warn("Nothing to load: no pinned jar and nothing downloaded");
+            LOG.error("Lectern could not be loaded: nothing pinned, nothing downloaded, "
+                    + "and the update server could not be reached", null);
             return;
         }
 
