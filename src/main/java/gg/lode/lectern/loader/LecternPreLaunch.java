@@ -11,6 +11,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.security.MessageDigest;
+import java.util.ArrayList;
+import java.util.List;
 
 public final class LecternPreLaunch implements PreLaunchEntrypoint {
     private static Log LOG = new Log("LecternLoader");
@@ -107,6 +109,14 @@ public final class LecternPreLaunch implements PreLaunchEntrypoint {
 
         try {
             new ModInjector(LOG).inject(chosen);
+        } catch (ModInjector.MissingDependencies missing) {
+            String needed = String.join(", ", friendly(missing.ids()));
+            LOG.error(container.displayName() + " needs " + needed + ", which is not installed", null);
+            try (LoaderUi ui = Ui.open(container.showUi() && user.showUi())) {
+                ui.problem(container.displayName(), container.displayName() + " needs " + needed
+                        + ". Install it and start the game again.");
+            }
+            return;
         } catch (Throwable failed) {
             if (chosen != pinned) {
                 Files.writeString(root.resolve("pending-update"), version);
@@ -145,6 +155,18 @@ public final class LecternPreLaunch implements PreLaunchEntrypoint {
         }
         LOG.info("Unpacked the pinned " + container.pinnedFileVersion());
         return target;
+    }
+
+    private static List<String> friendly(List<String> ids) {
+        List<String> out = new ArrayList<>();
+        for (String id : ids) {
+            out.add(switch (id) {
+                case "fabric", "fabric-api" -> "Fabric API";
+                case "fabricloader" -> "Fabric Loader";
+                default -> id;
+            });
+        }
+        return out;
     }
 
     private Path unwrapContainer(Path jar, Path root) throws Exception {

@@ -12,6 +12,8 @@ public interface LoaderUi extends AutoCloseable {
 
     void downloadFinished();
 
+    void problem(String displayName, String message);
+
     @Override
     void close();
 
@@ -42,6 +44,10 @@ public interface LoaderUi extends AutoCloseable {
 
         @Override
         public void downloadFinished() {
+        }
+
+        @Override
+        public void problem(String displayName, String message) {
         }
 
         @Override

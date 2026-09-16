@@ -21,6 +21,10 @@ public final class UiMain {
                 case "start" -> ui.downloadStarted(parts[1], parts[2], Long.parseLong(parts[3]));
                 case "progress" -> ui.downloadProgress(Long.parseLong(parts[1]));
                 case "finish" -> ui.downloadFinished();
+                case "problem" -> {
+                    ui.problem(parts[1], parts[2]);
+                    out.println("ok");
+                }
                 case "bye" -> {
                     ui.close();
                     System.exit(0);

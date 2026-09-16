@@ -161,6 +161,17 @@ public final class SwingUi implements LoaderUi {
     }
 
     @Override
+    public void problem(String displayName, String message) {
+        onSwingThread(() -> {
+            JPanel content = column(title(displayName + " could not start"), text(message));
+            JButton ok = button("Continue without " + displayName);
+            JDialog dialog = dialog(displayName, content, ok);
+            ok.addActionListener(event -> dialog.dispose());
+            dialog.setVisible(true);
+        });
+    }
+
+    @Override
     public void close() {
         downloadFinished();
     }

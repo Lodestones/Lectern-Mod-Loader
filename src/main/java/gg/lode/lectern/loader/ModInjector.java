@@ -38,10 +38,48 @@ final class ModInjector {
         }
         addToClassLoader(jar);
 
-        for (Path inner : loadable(nested)) {
+        List<Path> nestedMods = loadable(nested);
+        for (Path inner : nestedMods) {
             register(inner);
         }
+
+        List<String> absent = missingFor(jar, nestedMods);
+        if (!absent.isEmpty()) {
+            throw new MissingDependencies(absent);
+        }
         register(jar);
+    }
+
+    public static final class MissingDependencies extends Exception {
+        private final List<String> ids;
+
+        MissingDependencies(List<String> ids) {
+            super("missing " + String.join(", ", ids));
+            this.ids = ids;
+        }
+
+        public List<String> ids() {
+            return ids;
+        }
+    }
+
+    private List<String> missingFor(Path jar, List<Path> alsoLoading) throws Exception {
+        Object metadata = parseMetadata(jar);
+        if (metadata == null) return List.of();
+
+        Class<?> loaderModMetadata = implClass("metadata.LoaderModMetadata");
+        Method getId = loaderModMetadata.getMethod("getId");
+        Method getDependencies = loaderModMetadata.getMethod("getDependencies");
+
+        Set<String> available = new HashSet<>(BUILT_IN);
+        for (var mod : FabricLoader.getInstance().getAllMods()) {
+            available.add(mod.getMetadata().getId());
+        }
+        for (Path inner : alsoLoading) {
+            Object innerMetadata = parseMetadata(inner);
+            if (innerMetadata != null) available.add((String) getId.invoke(innerMetadata));
+        }
+        return missing(metadata, getDependencies, available);
     }
 
     private List<Path> loadable(List<Path> nested) throws Exception {

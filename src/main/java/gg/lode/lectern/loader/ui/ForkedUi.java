@@ -69,6 +69,11 @@ public final class ForkedUi implements LoaderUi {
     }
 
     @Override
+    public void problem(String displayName, String message) {
+        ask("problem\t" + displayName + "\t" + message);
+    }
+
+    @Override
     public void close() {
         tell("bye");
         try {
