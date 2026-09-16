@@ -39,6 +39,7 @@ public final class SwingUi implements LoaderUi {
     private static final Color MUTED = new Color(0x9A, 0x9A, 0xA8);
     private static final Color ACCENT = new Color(0xB4, 0x8C, 0xFF);
     private static final String LECTERN_PAGE = "https://lode.gg/mod/lectern";
+    private static final String PRIVACY_POLICY = "https://lode.gg/legal/lectern-privacy";
 
     private JFrame progress;
     private JProgressBar bar;
@@ -196,12 +197,18 @@ public final class SwingUi implements LoaderUi {
         return panel;
     }
 
-    private JLabel copyright() {
+    private JPanel copyright() {
         int year = Year.now().getValue();
         String span = year > 2026 ? "2026-" + year : "2026";
-        JLabel label = small("© Lodestone Services LLC " + span);
-        label.setBorder(BorderFactory.createEmptyBorder(6, 0, 0, 0));
-        return label;
+
+        JLabel notice = small("© Lodestone Services LLC " + span);
+        JLabel divider = small("  |  ");
+        JLabel privacy = link("Privacy Policy", PRIVACY_POLICY);
+        privacy.setFont(notice.getFont());
+
+        JPanel panel = row(notice, divider, privacy);
+        panel.setBorder(BorderFactory.createEmptyBorder(6, 0, 0, 0));
+        return panel;
     }
 
     private JPanel row(java.awt.Component... parts) {
