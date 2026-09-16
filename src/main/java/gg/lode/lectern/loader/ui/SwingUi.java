@@ -21,6 +21,7 @@ import java.awt.Cursor;
 import java.awt.Desktop;
 import java.awt.FlowLayout;
 import java.awt.Image;
+import java.awt.Taskbar;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.WindowAdapter;
@@ -58,7 +59,19 @@ public final class SwingUi implements LoaderUi {
     private JLabel status;
     private long total;
 
+    public static void applyAppIcon() {
+        Image mark = scaled(LECTERN_MARK, 256);
+        if (mark == null) return;
+        try {
+            Taskbar taskbar = Taskbar.getTaskbar();
+            if (taskbar.isSupported(Taskbar.Feature.ICON_IMAGE)) taskbar.setIconImage(mark);
+        } catch (Throwable noTaskbar) {
+            // No dock or taskbar to stamp; the window icons still apply.
+        }
+    }
+
     public SwingUi() {
+        applyAppIcon();
         try {
             UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
         } catch (Exception keepTheDefault) {
@@ -250,12 +263,7 @@ public final class SwingUi implements LoaderUi {
         int year = Year.now().getValue();
         String span = year > 2026 ? "2026-" + year : "2026";
 
-        JLabel notice = small("© Lodestone Services LLC " + span);
-        JLabel divider = small("  |  ");
-        JLabel privacy = link("Privacy Policy", PRIVACY_POLICY);
-        privacy.setFont(notice.getFont());
-
-        JPanel panel = row(notice, divider, privacy);
+        JPanel panel = row(small("© Lodestone Services LLC " + span));
         panel.setBorder(BorderFactory.createEmptyBorder(6, 0, 0, 0));
         return panel;
     }

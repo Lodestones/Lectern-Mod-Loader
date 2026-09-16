@@ -29,6 +29,8 @@ public final class ForkedUi implements LoaderUi {
 
             ProcessBuilder builder = new ProcessBuilder(
                     java.toString(), "-Djava.awt.headless=false",
+                    "-Xdock:name=Lectern",
+                    "-Dapple.awt.application.name=Lectern",
                     "-cp", self.toString(), UiMain.class.getName());
             builder.redirectError(ProcessBuilder.Redirect.DISCARD);
             return new ForkedUi(builder.start());

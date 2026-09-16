@@ -8,6 +8,7 @@ import java.nio.charset.StandardCharsets;
 public final class UiMain {
 
     public static void main(String[] args) throws Exception {
+        SwingUi.applyAppIcon();
         SwingUi ui = new SwingUi();
         BufferedReader in = new BufferedReader(new InputStreamReader(System.in, StandardCharsets.UTF_8));
         PrintWriter out = new PrintWriter(new java.io.OutputStreamWriter(System.out, StandardCharsets.UTF_8), true);
