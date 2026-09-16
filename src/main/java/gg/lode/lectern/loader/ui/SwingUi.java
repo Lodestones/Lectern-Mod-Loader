@@ -73,7 +73,11 @@ public final class SwingUi implements LoaderUi {
                     Box.createVerticalStrut(4),
                     small("If unchecked, you will be asked to update each time instead. You can change"),
                     small("this in .minecraft/lectern/loader.properties at any time if you want to opt"),
-                    small("back in."));
+                    small("back in."),
+                    Box.createVerticalStrut(10),
+                    row(small("By installing " + displayName + " for the first time, you agree to our "),
+                            smallLink("Privacy Policy", PRIVACY_POLICY),
+                            small(".")));
 
             JButton ok = button("Continue");
             JDialog dialog = dialog(displayName, content, ok);
@@ -227,6 +231,15 @@ public final class SwingUi implements LoaderUi {
         row.setOpaque(false);
         for (java.awt.Component part : parts) row.add(part);
         return row;
+    }
+
+    private JLabel smallLink(String value, String url) {
+        JLabel label = link(value, url);
+        label.setFont(small("").getFont());
+        Map<TextAttribute, Object> attributes = new HashMap<>(label.getFont().getAttributes());
+        attributes.put(TextAttribute.UNDERLINE, TextAttribute.UNDERLINE_ON);
+        label.setFont(label.getFont().deriveFont(attributes));
+        return label;
     }
 
     private JLabel link(String value, String url) {
